@@ -2,9 +2,12 @@ import { Command } from 'commander';
 import fs from 'fs/promises';
 import z from 'zod';
 
+import { PrismaClient } from './generated/prisma';
 import { CsvInputTrimmerSchema, csvParse } from './helpers/csv';
 
 const program = new Command();
+
+const prisma = new PrismaClient();
 
 program
   .name('expenses')
@@ -20,7 +23,7 @@ program
     const data = CsvInputTrimmerSchema.pipe(
       z.array(
         z.object({
-          timestamp: z
+          reportedAt: z
             .string()
             .transform((val) => new Date(val))
             .pipe(z.date()),
@@ -75,7 +78,59 @@ program
       }),
     );
 
-    console.log('Importing file...', data);
+    data.map(async (item) => {
+      const userName = item.attendees.toLowerCase().trim();
+
+      const user = await prisma.user.upsert({
+        where: {
+          name: userName,
+        },
+        create: {
+          name: userName,
+        },
+        update: {},
+      });
+
+      const category = await prisma.category.upsert({
+        where: {
+          name_userId: {
+            name: item.category,
+            userId: user.id,
+          },
+        },
+        create: {
+          name: item.category,
+          userId: user.id,
+        },
+        update: {},
+      });
+
+      await prisma.expense.upsert({
+        where: {
+          merchant_categoryId_originalAmount_originalCurrency_reportedAt_userId:
+            {
+              merchant: item.merchant,
+              originalAmount: item.originalAmount,
+              originalCurrency: item.originalCurrency,
+              reportedAt: item.reportedAt,
+              userId: user.id,
+              categoryId: category.id,
+            },
+          amount: item.amount,
+        },
+        create: {
+          reportedAt: item.reportedAt,
+          merchant: item.merchant,
+          userId: user.id,
+          amount: item.amount,
+          originalAmount: item.originalAmount,
+          originalCurrency: item.originalCurrency,
+          categoryId: category.id,
+          comment: item.comment,
+        },
+        update: {},
+      });
+    });
   });
 
 program.parse(process.argv);

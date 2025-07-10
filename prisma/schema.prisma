@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id String @id @default(uuid())
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  name String @unique
+
+  expense   Expense[]
+  objectTag ObjectTag[]
+  category  Category[]
+
+  @@map("user")
+}
+
+model Expense {
+  id String @id @default(uuid())
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  reportedAt DateTime @default(now()) @map("reported_at")
+
+  merchant         String
+  amount           Float
+  reimbursable     Boolean @default(false)
+  originalCurrency String  @map("original_currency")
+  originalAmount   Float   @map("original_amount")
+  comment          String?
+
+  user       User      @relation(fields: [userId], references: [id])
+  userId     String    @map("user_id")
+  category   Category? @relation(fields: [categoryId], references: [id])
+  categoryId String?   @map("category_id")
+
+  @@unique([merchant, categoryId, originalAmount, originalCurrency, reportedAt, userId])
+  @@map("expense")
+}
+
+model Category {
+  id String @id @default(uuid())
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  name String
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @map("user_id")
+
+  expense Expense[]
+
+  @@unique([name, userId])
+  @@map("category")
+}
+
+model ObjectTag {
+  id String @id @default(uuid())
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archivedAt DateTime? @map("archived_at")
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @map("user_id")
+
+  object   String
+  objectId String @map("object_id")
+
+  name String
+
+  @@map("object_tag")
+}
