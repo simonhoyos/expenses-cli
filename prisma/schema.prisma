@@ -42,11 +42,14 @@ model Expense {
   originalCurrency String  @map("original_currency")
   originalAmount   Float   @map("original_amount")
   comment          String?
+  type             String?
 
-  user       User      @relation(fields: [userId], references: [id])
-  userId     String    @map("user_id")
-  category   Category? @relation(fields: [categoryId], references: [id])
-  categoryId String?   @map("category_id")
+  user             User      @relation(fields: [userId], references: [id])
+  userId           String    @map("user_id")
+  category         Category? @relation("ExpensePrimaryCategory", fields: [categoryId], references: [id])
+  categoryId       String?   @map("category_id")
+  secondCategory   Category? @relation("ExpenseSecondaryCategory", fields: [secondCategoryId], references: [id])
+  secondCategoryId String?   @map("second_category_id")
 
   @@unique([merchant, categoryId, originalAmount, originalCurrency, reportedAt, userId])
   @@map("expense")
@@ -64,7 +67,8 @@ model Category {
   user   User   @relation(fields: [userId], references: [id])
   userId String @map("user_id")
 
-  expense Expense[]
+  primaryExpenses   Expense[] @relation("ExpensePrimaryCategory")
+  secondaryExpenses Expense[] @relation("ExpenseSecondaryCategory")
 
   @@unique([name, userId])
   @@map("category")
